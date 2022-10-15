@@ -7,6 +7,39 @@
 #include <string.h>
 #include <string>
 
+#include <list>
+#include <thread>
+
+void client_handler(int clientSocket)
+{
+    char buf[4096];
+    while (true) {
+        // clear buffer
+        memset(buf, 0, 4096);
+
+        // wait for a message
+        int bytesRecv = recv(clientSocket, buf, 4096, 0);
+        if (bytesRecv == -1)
+        {
+            std::cerr << "There was a connection issue." << std::endl;
+            break;
+        }
+        if (bytesRecv == 0)
+        {
+            std::cout << "The client disconnected" << std::endl;
+            break;
+        }
+        
+        // display message
+        std::cout << "Received: " << std::string(buf, 0, bytesRecv);
+
+        // return message
+        send(clientSocket, buf, bytesRecv+1, 0);
+    }
+    // close socket
+    close(clientSocket);
+}
+
 int main()
 {
     
@@ -37,48 +70,34 @@ int main()
         return -3;
     }
 
-    sockaddr_in client;
-    socklen_t clientSize = sizeof(client);
+    std::list<std::thread> threads;
 
-    std::cout << "Accept client call..." << std::endl;
-    int clientSocket = accept(listening, (struct sockaddr *)&client, &clientSize);
-
-
-    std::cout << "Received call..." << std::endl;
-    if (clientSocket == -1)
+    while(true)
     {
-        std::cerr << "Problem with client connecting!";
-        return -4;
+        sockaddr_in client;
+        socklen_t clientSize = sizeof(client);
+
+        std::cout << "Accept client call..." << std::endl;
+        int clientSocket = accept(listening, (struct sockaddr *)&client, &clientSize);
+
+
+        std::cout << "Received call..." << std::endl;
+        if (clientSocket == -1)
+        {
+            std::cerr << "Problem with client connecting!";
+            break;
+        }
+
+        std::cout << "Client address: " << inet_ntoa(client.sin_addr) << " and port: " << client.sin_port << std::endl;
+        threads.emplace_back(client_handler, clientSocket);
     }
-
-    std::cout << "Client address: " << inet_ntoa(client.sin_addr) << " and port: " << client.sin_port << std::endl;
-
     close(listening);
 
-    char buf[4096];
-    while (true) {
-        // clear buffer
-        memset(buf, 0, 4096);
-
-        // wait for a message
-        int bytesRecv = recv(clientSocket, buf, 4096, 0);
-        if (bytesRecv == -1)
-        {
-            std::cerr << "There was a connection issue." << std::endl;
-        }
-        if (bytesRecv == 0)
-        {
-            std::cout << "The client disconnected" << std::endl;
-        }
-        
-        // display message
-        std::cout << "Received: " << std::string(buf, 0, bytesRecv);
-
-        // return message
-        send(clientSocket, buf, bytesRecv+1, 0);
+    for (auto& t: threads)
+    {
+        t.join();
     }
-    // close socket
-    close(clientSocket);
+    threads.clear();
 
     return 0;
 
