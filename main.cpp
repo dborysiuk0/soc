@@ -6,9 +6,25 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <string>
+#include <vector>
 
 #include <list>
 #include <thread>
+#include "queue.h"
+
+void send_messege(int clientSocket, char *buf, int bytesRecv){
+    send(clientSocket, buf, bytesRecv+1, 0);
+}
+
+kallkod::queue<int> qu_soc(2);
+void socked_list(int clientSocket){
+    qu_soc.send(clientSocket);
+}
+
+int socked_print(){
+   return qu_soc.receive();
+}
+
 
 void client_handler(int clientSocket)
 {
@@ -34,7 +50,7 @@ void client_handler(int clientSocket)
         std::cout << "Received: " << std::string(buf, 0, bytesRecv);
 
         // return message
-        send(clientSocket, buf, bytesRecv+1, 0);
+        send_messege(socked_print(),buf,bytesRecv );
     }
     // close socket
     close(clientSocket);
@@ -80,13 +96,14 @@ int main()
         std::cout << "Accept client call..." << std::endl;
         int clientSocket = accept(listening, (struct sockaddr *)&client, &clientSize);
 
-
         std::cout << "Received call..." << std::endl;
         if (clientSocket == -1)
         {
             std::cerr << "Problem with client connecting!";
             break;
         }
+
+        socked_list(clientSocket);
 
         std::cout << "Client address: " << inet_ntoa(client.sin_addr) << " and port: " << client.sin_port << std::endl;
         threads.emplace_back(client_handler, clientSocket);
