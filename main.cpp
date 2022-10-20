@@ -9,22 +9,13 @@
 #include <vector>
 
 #include <list>
+#include <map>
 #include <thread>
 #include "queue.h"
 
-void send_messege(int clientSocket, char *buf, int bytesRecv){
-    send(clientSocket, buf, bytesRecv+1, 0);
-}
+using Queue = kallkod::queue<int,std::list>;
 
-kallkod::queue<int> qu_soc(2);
-void socked_list(int clientSocket){
-    qu_soc.send(clientSocket);
-}
-
-int socked_print(){
-   return qu_soc.receive();
-}
-
+Queue clients_list(2);
 
 void client_handler(int clientSocket)
 {
@@ -44,13 +35,11 @@ void client_handler(int clientSocket)
         {
             std::cout << "The client disconnected" << std::endl;
             break;
-        }
-        
+        }  
         // display message
         std::cout << "Received: " << std::string(buf, 0, bytesRecv);
 
-        // return message
-        send_messege(socked_print(),buf,bytesRecv );
+        send(clients_list.receive(), buf, bytesRecv+1, 0);
     }
     // close socket
     close(clientSocket);
@@ -69,7 +58,7 @@ int main()
 
     struct sockaddr_in hint;
     hint.sin_family = AF_INET;
-    hint.sin_port = htons(54000);
+    hint.sin_port = htons(5000);
     inet_pton(AF_INET, "0.0.0.0", &hint.sin_addr);
 
     std::cout << "Binding socket to sockaddr..." << std::endl;
@@ -103,7 +92,7 @@ int main()
             break;
         }
 
-        socked_list(clientSocket);
+        clients_list.send(clientSocket);
 
         std::cout << "Client address: " << inet_ntoa(client.sin_addr) << " and port: " << client.sin_port << std::endl;
         threads.emplace_back(client_handler, clientSocket);
