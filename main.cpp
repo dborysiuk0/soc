@@ -14,8 +14,8 @@
 #include "queue.h"
 
 using Queue = kallkod::queue<int,std::list>;
-
-Queue clients_list(2);
+Queue clients_list(1);
+std::list<int> clients_soc;
 
 void client_handler(int clientSocket)
 {
@@ -39,7 +39,9 @@ void client_handler(int clientSocket)
         // display message
         std::cout << "Received: " << std::string(buf, 0, bytesRecv);
 
-        send(clients_list.receive(), buf, bytesRecv+1, 0);
+        for(auto c:clients_soc){
+            send(c, buf, bytesRecv+1, 0);
+        }
     }
     // close socket
     close(clientSocket);
@@ -93,6 +95,7 @@ int main()
         }
 
         clients_list.send(clientSocket);
+        clients_soc.push_back(clients_list.receive());
 
         std::cout << "Client address: " << inet_ntoa(client.sin_addr) << " and port: " << client.sin_port << std::endl;
         threads.emplace_back(client_handler, clientSocket);
