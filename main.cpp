@@ -11,10 +11,7 @@
 #include <list>
 #include <map>
 #include <thread>
-#include "queue.h"
 
-using Queue = kallkod::queue<int,std::list>;
-Queue clients_list(1);
 std::list<int> clients_soc;
 
 void client_handler(int clientSocket)
@@ -34,13 +31,21 @@ void client_handler(int clientSocket)
         if (bytesRecv == 0)
         {
             std::cout << "The client disconnected" << std::endl;
+            for(auto c:clients_soc){
+                if(c == clientSocket){
+                    clients_soc.remove(c);
+                }
+            }
             break;
         }  
         // display message
         std::cout << "Received: " << std::string(buf, 0, bytesRecv);
 
+        //send message
         for(auto c:clients_soc){
-            send(c, buf, bytesRecv+1, 0);
+            if(c != clientSocket){
+                send(c, buf, bytesRecv+1, 0);
+            }
         }
     }
     // close socket
@@ -94,8 +99,7 @@ int main()
             break;
         }
 
-        clients_list.send(clientSocket);
-        clients_soc.push_back(clients_list.receive());
+        clients_soc.push_back(clientSocket);
 
         std::cout << "Client address: " << inet_ntoa(client.sin_addr) << " and port: " << client.sin_port << std::endl;
         threads.emplace_back(client_handler, clientSocket);
