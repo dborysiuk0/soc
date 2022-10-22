@@ -6,13 +6,42 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <string>
-#include <vector>
 
 #include <list>
-#include <map>
 #include <thread>
+#include <mutex>
+
+std::mutex m;
 
 std::list<int> clients_soc;
+void send_message_for_all(int clientSocket, char *buf, int bytesRecv){
+    std::lock_guard<std::mutex> lk(m);
+    int x=0;
+    for(auto c:clients_soc){
+        if(c != clientSocket){
+            while(x != bytesRecv+1){
+                int result_send;
+                result_send = send(c, buf, bytesRecv+1, 0);
+                if(result_send > 0){
+                    x += result_send;
+                }
+            }
+        }
+    }
+}
+
+void remove_client_from_list(int clientSocket){
+    std::lock_guard<std::mutex> lk(m);
+    clients_soc.remove(clientSocket);
+}
+
+void print_sockets(){
+    std::lock_guard<std::mutex> lk(m);
+    for(auto c:clients_soc){
+        std::cout<< c << " ";
+    }
+    std::cout<<std::endl;
+}
 
 void client_handler(int clientSocket)
 {
@@ -31,22 +60,16 @@ void client_handler(int clientSocket)
         if (bytesRecv == 0)
         {
             std::cout << "The client disconnected" << std::endl;
-            for(auto c:clients_soc){
-                if(c == clientSocket){
-                    clients_soc.remove(c);
-                }
-            }
+            remove_client_from_list(clientSocket);
+            print_sockets();
             break;
         }  
         // display message
         std::cout << "Received: " << std::string(buf, 0, bytesRecv);
 
         //send message
-        for(auto c:clients_soc){
-            if(c != clientSocket){
-                send(c, buf, bytesRecv+1, 0);
-            }
-        }
+        send_message_for_all( clientSocket, buf, bytesRecv );
+
     }
     // close socket
     close(clientSocket);
@@ -65,7 +88,7 @@ int main()
 
     struct sockaddr_in hint;
     hint.sin_family = AF_INET;
-    hint.sin_port = htons(5000);
+    hint.sin_port = htons(5001);
     inet_pton(AF_INET, "0.0.0.0", &hint.sin_addr);
 
     std::cout << "Binding socket to sockaddr..." << std::endl;
@@ -99,7 +122,10 @@ int main()
             break;
         }
 
-        clients_soc.push_back(clientSocket);
+        {
+            std::lock_guard<std::mutex> lk(m);
+            clients_soc.push_back(clientSocket);
+        }
 
         std::cout << "Client address: " << inet_ntoa(client.sin_addr) << " and port: " << client.sin_port << std::endl;
         threads.emplace_back(client_handler, clientSocket);
@@ -113,5 +139,4 @@ int main()
     threads.clear();
 
     return 0;
-
 }
