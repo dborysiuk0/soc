@@ -80,35 +80,31 @@ int main()
     
     std::cout << "Creating server socket..." << std::endl;
     int listening = socket(AF_INET, SOCK_STREAM, 0);
-    if (listening == -1)
-    {
+    if (listening == -1){
         std::cerr << "Can't create a socket!";
         return -1;
     }
 
     struct sockaddr_in hint;
     hint.sin_family = AF_INET;
-    hint.sin_port = htons(5001);
-    inet_pton(AF_INET, "0.0.0.0", &hint.sin_addr);
+    hint.sin_port = htons(8000);
+    inet_pton(AF_INET, "127.0.0.0", &hint.sin_addr);
 
     std::cout << "Binding socket to sockaddr..." << std::endl;
-    if (bind(listening, (struct sockaddr *)&hint, sizeof(hint)) == -1) 
-    {
+    if (bind(listening, (struct sockaddr *)&hint, sizeof(hint)) == -1) {
         std::cerr << "Can't bind to IP/port";
         return -2;
     }
 
     std::cout << "Mark the socket for listening..." << std::endl;
-    if (listen(listening, SOMAXCONN) == -1)
-    {
+    if (listen(listening, SOMAXCONN) == -1){
         std::cerr << "Can't listen !";
         return -3;
     }
 
     std::list<std::thread> threads;
 
-    while(true)
-    {
+    while(true){
         sockaddr_in client;
         socklen_t clientSize = sizeof(client);
 
@@ -116,8 +112,7 @@ int main()
         int clientSocket = accept(listening, (struct sockaddr *)&client, &clientSize);
 
         std::cout << "Received call..." << std::endl;
-        if (clientSocket == -1)
-        {
+        if (clientSocket == -1){
             std::cerr << "Problem with client connecting!";
             break;
         }
@@ -132,8 +127,7 @@ int main()
     }
     close(listening);
 
-    for (auto& t: threads)
-    {
+    for (auto& t: threads){
         t.join();
     }
     threads.clear();
